@@ -5,26 +5,24 @@
 int main(int argc, char *argv[])
 {
     FILE *ifp, *ofp;
-    gray *graymap;
-    int ich1, ich2, rows, cols, maxval = 255, pgmraw_in, pgmraw_out;
+    gray *graymap, *grad_x, *grad_y, *magnitude;
+    int ich1, ich2, rows, cols, maxval = 255, pgmraw_in;
     int i, j;
 
-    /* Arguments */
     if (argc != 3)
     {
         printf("\nUsage: %s file_in file_out \n\n", argv[0]);
         exit(0);
     }
-
-    /* Opening input file */
     ifp = fopen(argv[1], "r");
+
     if (ifp == NULL)
     {
         printf("error in opening file %s\n", argv[1]);
         exit(1);
     }
 
-    /*  Magic number reading */
+    // magic number
     ich1 = getc(ifp);
     if (ich1 == EOF)
     {
@@ -36,33 +34,32 @@ int main(int argc, char *argv[])
         pm_erreur("EOF /read error / magic number");
     }
 
-    if (ich2 != '2' && ich2 != '5')
+    if (ich1 != 'P' || (ich2 != '2' && ich2 != '5'))
     {
-        pm_erreur(" wrong file type ");
-    }
-    else
-    {
-        if (ich2 == '2')
-        {
-            pgmraw_in = 0;
-        }
-        else
-        {
-            pgmraw_in = 1;
-        }
+        pm_erreur("Invalid PGM format. Expected P2 (ASCII) or P5 (binary).");
     }
 
-    /* Reading image dimensions */
+    // is image p5 or p2
+    pgmraw_in = (ich2 == '5');
+
     cols = pm_getint(ifp);
     rows = pm_getint(ifp);
     maxval = pm_getint(ifp);
 
-    /* Memory allocation  */
     graymap = (gray *)malloc(cols * rows * sizeof(gray));
+    grad_x = (gray *)malloc(cols * rows * sizeof(gray));
+    grad_y = (gray *)malloc(cols * rows * sizeof(gray));
+    magnitude = (gray *)malloc(cols * rows * sizeof(gray));
 
-    /* Reading */
+    if (!graymap || !grad_x || !grad_y || !magnitude)
+    {
+        pm_erreur("Memory allocation error");
+    }
+    // read image data
     for (i = 0; i < rows; i++)
+    {
         for (j = 0; j < cols; j++)
+        {
             if (pgmraw_in)
             {
                 graymap[i * cols + j] = pm_getrawbyte(ifp);
@@ -71,11 +68,15 @@ int main(int argc, char *argv[])
             {
                 graymap[i * cols + j] = pm_getint(ifp);
             }
+        }
+    }
 
-    /* Closing input file */
     fclose(ifp);
 
-    /* Opening output file */
+    compute_gradient_x(graymap, grad_x, rows, cols);
+    compute_gradient_y(graymap, grad_y, rows, cols);
+    compute_gradient_magnitude(grad_x, grad_y, magnitude, rows, cols);
+
     ofp = fopen(argv[2], "w");
     if (ofp == NULL)
     {
@@ -83,8 +84,23 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    /* Closing output file */
+    // write results
+    fprintf(ofp, "P2\n%d %d\n%d\n", cols, rows, maxval);
+
+    for (i = 0; i < rows; i++)
+    {
+        for (j = 0; j < cols; j++)
+        {
+            fprintf(ofp, "%d ", magnitude[i * cols + j]);
+        }
+        fprintf(ofp, "\n");
+    }
+
     fclose(ofp);
+    free(graymap);
+    free(grad_x);
+    free(grad_y);
+    free(magnitude);
 
     return 0;
 }
