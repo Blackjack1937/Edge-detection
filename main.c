@@ -77,6 +77,22 @@ int main(int argc, char *argv[])
     compute_gradient_y(graymap, grad_y, rows, cols);
     compute_gradient_magnitude(grad_x, grad_y, magnitude, rows, cols);
 
+    // normalize gradient magnitudes to range 0-255
+    /* double max_magnitude = 0.0;
+    for (i = 0; i < rows * cols; i++)
+    {
+        if (magnitude[i] > max_magnitude)
+        {
+            max_magnitude = magnitude[i];
+        }
+    }
+
+    // scale all magnitudes
+    for (i = 0; i < rows * cols; i++)
+    {
+        magnitude[i] = (gray)((magnitude[i] / max_magnitude) * 255);
+    } */
+
     ofp = fopen(argv[2], "w");
     if (ofp == NULL)
     {
